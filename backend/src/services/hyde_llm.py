@@ -39,7 +39,7 @@ Do NOT mention that this is hypothetical.
 """
 
     response = client.chat.completions.create(
-        model="llama-3.3-70b-versatile",   # ✅ A real, current Groq model
+        model="llama-3.1-8b-instant",   # ✅ A real, current Groq model
         messages=[
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt}
@@ -75,7 +75,7 @@ Output MUST be valid JSON list, example:
 """
 
     response = client.chat.completions.create(
-        model="llama-3.3-70b-versatile",   # Same stable model
+        model="llama-3.1-8b-instant",   # Same stable model
         messages=[
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},

@@ -3,109 +3,166 @@ from markdown import markdown
 from bs4 import BeautifulSoup
 
 from reportlab.lib.pagesizes import letter
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, PageBreak
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.platypus import (
-    SimpleDocTemplate, Paragraph, Spacer, PageBreak
-)
 from reportlab.lib.enums import TA_CENTER
 from reportlab.lib.units import inch
-
+from reportlab.lib import colors
 
 EXPORT_DIR = "./exports"
 os.makedirs(EXPORT_DIR, exist_ok=True)
 
 
-# ---------------------------------------------------
-# CLEAN WORKING Markdown → Paragraphs conversion
-# ---------------------------------------------------
-def markdown_to_paragraphs(md_text: str):
-    # Convert markdown → raw HTML
-    html = markdown(md_text)
-
-    # Parse clean HTML using BeautifulSoup
+def html_to_story(html: str):
     soup = BeautifulSoup(html, "html.parser")
-
     styles = getSampleStyleSheet()
-    normal = styles["Normal"]
 
-    paragraphs = []
+    # Base style
+    normal = ParagraphStyle(
+        "NormalCustom",
+        parent=styles["Normal"],
+        fontSize=11,
+        leading=15,
+        spaceAfter=6,
+    )
 
-    # Only process supported tags
-    for element in soup.find_all(["h1", "h2", "h3", "p", "li"]):
-        text = element.get_text().strip()
+    h1 = ParagraphStyle(
+        "Heading1Custom",
+        parent=styles["Heading1"],
+        fontSize=20,
+        leading=24,
+        textColor=colors.darkblue,
+        spaceBefore=10,
+        spaceAfter=12,
+    )
 
+    h2 = ParagraphStyle(
+        "Heading2Custom",
+        parent=styles["Heading2"],
+        fontSize=16,
+        leading=20,
+        textColor=colors.darkgreen,
+        spaceBefore=8,
+        spaceAfter=8,
+    )
+
+    h3 = ParagraphStyle(
+        "Heading3Custom",
+        parent=styles["Heading3"],
+        fontSize=14,
+        leading=18,
+        textColor=colors.darkred,
+        spaceBefore=6,
+        spaceAfter=6,
+    )
+
+    code_style = ParagraphStyle(
+        "Code",
+        parent=normal,
+        fontName="Courier",
+        fontSize=9,
+        leading=11,
+        backColor=colors.whitesmoke,
+        leftIndent=10,
+        rightIndent=10,
+        spaceBefore=4,
+        spaceAfter=4,
+    )
+
+    table_style = ParagraphStyle(
+        "Table",
+        parent=normal,
+        fontName="Courier",
+        fontSize=9,
+        leading=11,
+        leftIndent=10,
+    )
+
+    story = []
+
+    # Handle tables manually for nicer mono layout
+    for table in soup.find_all("table"):
+        rows = table.find_all("tr")
+        for row in rows:
+            cells = row.find_all(["th", "td"])
+            texts = [c.get_text(strip=True) for c in cells]
+            if not texts:
+                continue
+            line = " | ".join(texts)
+            story.append(Paragraph(line, table_style))
+        story.append(Spacer(1, 0.12 * inch))
+        table.decompose()
+
+    # Headings, paragraphs, bullets, code/flowcharts
+    for tag in soup.find_all(["h1", "h2", "h3", "p", "li", "pre", "code"]):
+        text = tag.get_text().strip()
         if not text:
             continue
 
-        # Heading 1
-        if element.name == "h1":
-            paragraphs.append(Paragraph(f"<b><font size=18>{text}</font></b>", normal))
-            paragraphs.append(Spacer(1, 0.20 * inch))
+        if tag.name == "h1":
+            story.append(Paragraph(text, h1))
+        elif tag.name == "h2":
+            story.append(Paragraph(text, h2))
+        elif tag.name == "h3":
+            story.append(Paragraph(text, h3))
+        elif tag.name == "li":
+            story.append(Paragraph("• " + text, normal))
+        elif tag.name in ("pre", "code"):
+            safe = text.replace(" ", "&nbsp;").replace("\n", "<br/>")
+            story.append(Paragraph(safe, code_style))
+        elif tag.name == "p":
+            story.append(Paragraph(text, normal))
 
-        # Heading 2
-        elif element.name == "h2":
-            paragraphs.append(Paragraph(f"<b><font size=16>{text}</font></b>", normal))
-            paragraphs.append(Spacer(1, 0.15 * inch))
+        story.append(Spacer(1, 0.08 * inch))
 
-        # Heading 3
-        elif element.name == "h3":
-            paragraphs.append(Paragraph(f"<b><font size=14>{text}</font></b>", normal))
-            paragraphs.append(Spacer(1, 0.10 * inch))
-
-        # Bullet list
-        elif element.name == "li":
-            paragraphs.append(Paragraph(f"• {text}", normal))
-            paragraphs.append(Spacer(1, 0.10 * inch))
-
-        # Normal paragraph
-        elif element.name == "p":
-            paragraphs.append(Paragraph(text, normal))
-            paragraphs.append(Spacer(1, 0.12 * inch))
-
-    return paragraphs
+    return story
 
 
-# ---------------------------------------------------
-# MAIN — Generate Beautiful PDF
-# ---------------------------------------------------
 def generate_beautiful_pdf(markdown_text: str, filename: str, title: str, subject: str):
     pdf_path = os.path.join(EXPORT_DIR, filename)
 
+    # Markdown → HTML
+    html = markdown(markdown_text, extensions=["fenced_code", "tables"])
+
     doc = SimpleDocTemplate(pdf_path, pagesize=letter)
-    styles = getSampleStyleSheet()
+    story = []
 
-    elements = []
-
-    # ---------------- Title Page ----------------
+    # Title page
     title_style = ParagraphStyle(
-        name="TitlePage",
-        parent=styles["Title"],
+        "PDFTitle",
+        parent=getSampleStyleSheet()["Title"],
         alignment=TA_CENTER,
-        fontSize=30,
-        spaceAfter=30,
+        fontSize=28,
+        textColor=colors.darkblue,
+        spaceAfter=20,
     )
 
     subtitle_style = ParagraphStyle(
-        name="Subtitle",
-        parent=styles["Normal"],
+        "PDFSubtitle",
+        parent=getSampleStyleSheet()["Normal"],
         alignment=TA_CENTER,
-        fontSize=16,
-        spaceAfter=50,
+        fontSize=14,
+        textColor=colors.black,
+        spaceAfter=10,
     )
 
-    elements.append(Paragraph(title, title_style))
+    footer_style = ParagraphStyle(
+        "PDFFooter",
+        parent=getSampleStyleSheet()["Normal"],
+        alignment=TA_CENTER,
+        fontSize=9,
+        textColor=colors.grey,
+        spaceBefore=200,
+    )
 
+    story.append(Paragraph(title, title_style))
     if subject:
-        elements.append(Paragraph(f"<b>Subject:</b> {subject}", subtitle_style))
+        story.append(Paragraph(f"<b>Subject:</b> {subject}", subtitle_style))
+    story.append(Paragraph("Generated by Syllabus GPT (HyDE + RAG)", footer_style))
+    story.append(PageBreak())
 
-    # Page break before content
-    elements.append(PageBreak())
+    # Content
+    story.extend(html_to_story(html))
 
-    # --------------- Markdown → PDF content ---------------
-    paragraphs = markdown_to_paragraphs(markdown_text)
-    elements.extend(paragraphs)
-
-    # Build final PDF
-    doc.build(elements)
-
+    doc.build(story)
     return pdf_path

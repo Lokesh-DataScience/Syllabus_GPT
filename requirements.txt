@@ -1,8 +1,9 @@
-fastapi 
-uvicorn 
-langchain 
-langchain-openai 
-python-multipart 
+fastapi
+uvicorn
+uvicorn[standard]
+langchain
+langchain-openai
+python-multipart
 pydantic
 chromadb
 pytesseract
@@ -10,3 +11,8 @@ pdfminer.six
 opencv-python
 python-dotenv
 pillow
+sentence-transformers
+groq
+easyocr
+reportlab
+markdown
