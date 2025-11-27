@@ -16,3 +16,4 @@ groq
 easyocr
 reportlab
 markdown
+beautifulsoup4
