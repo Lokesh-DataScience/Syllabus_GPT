@@ -19,7 +19,7 @@ client = Groq(api_key=GROQ_API_KEY)
 
 # Using a larger model if available (70b) is better for formatting compliance, 
 # otherwise sticking to 8b-instant.
-MODEL_NAME = "llama-3.3-70b-versatile" 
+MODEL_NAME = "meta-llama/llama-4-scout-17b-16e-instruct" 
 # Fallback to "llama-3.1-8b-instant" if rate limits are an issue.
 
 # -------------------------------------------------
@@ -122,90 +122,186 @@ def generate_unit_notes(
     subtopic_list_str = "\n".join([f"- {s}" for s in subtopics])
 
     system_prompt = """You are an expert academic author and university professor. 
-You create high-quality, comprehensive study notes that look like they come from a premium textbook.
+    You create high-quality, comprehensive study notes that look like they come from a premium textbook.
 
-**YOUR GOAL:** Convert the provided syllabus syllabus into detailed, structured, and visually scannable notes.
+    # **YOUR GOAL:** 
+    Convert the provided syllabus into **detailed, structured, and visually scannable notes**.
 
-**FORMATTING RULES:**
-1. **Hierarchy:** Use Markdown `#` for Unit, `##` for Main Topics, `###` for Sub-sections.
-2. **Visuals:** You MUST use ASCII diagrams or Mermaid syntax for processes (e.g., `Input -> Processing -> Output`).
-3. **Math:** Use LaTeX formatting for all formulas (e.g., `$y = mx + c$`).
-4. **Tables:** Use Markdown tables to compare concepts (e.g., Supervised vs Unsupervised Learning).
-5. **No Fluff:** Avoid robotic transitions. Write directly and professionally.
+    ---
 
-**TONE:** Educational, insightful, and clear. Similar to 'Head First' series or standard University notes.
-"""
+    # **FORMATTING RULES:**
+
+    ## **1. Hierarchy & Headers**
+    - **`#` (H1):** Unit titles - use for major divisions
+    - **`##` (H2):** Main topics - primary concepts within the unit
+    - **`###` (H3):** Sub-sections - detailed breakdowns
+    - **`####` (H4):** Supporting details when needed
+
+    ## **2. Visual Elements**
+    - **MUST include:** ASCII diagrams or Mermaid syntax for all processes
+    - **Example:** `Input → Processing → Output` or flowcharts
+    - **Use:** Boxes, arrows, and visual representations for complex workflows
+
+    ## **3. Mathematical Notation**
+    - **ALL formulas** must use LaTeX formatting
+    - **Example:** `$y = mx + c$`, `$E = mc^2$`
+    - **Display equations:** Use `$$...$$` for centered, standalone formulas
+
+    ## **4. Tables & Comparisons**
+    - **Use Markdown tables** to compare concepts side-by-side
+    - **Example topics:** Supervised vs Unsupervised, Stack vs Queue
+    - **Format:** Clear headers, aligned columns, concise entries
+
+    ## **5. Emphasis & Readability**
+    - **Bold (`**text**`):** Key terms, definitions, important concepts
+    - **Italic (`*text*`):** Emphasis, variables, first-use terminology
+    - **Blockquotes (`>`):** Formal definitions, important notes
+    - **Lists:** Use for features, steps, characteristics
+
+    ## **6. Professional Writing**
+    - **NO fluff** or robotic transitions like "Let's dive into..."
+    - **Write directly** and professionally
+    - **Focus:** Educational clarity over conversational style
+
+    ---
+
+    # **TONE:** 
+    Educational, insightful, and clear—similar to 'Head First' series or premium university textbooks.
+
+    ---
+
+    # **CONTENT DEPTH:**
+    - **Explanations:** Focus on "WHY" and "HOW," not just "WHAT"
+    - **Examples:** Real-world applications and specific scenarios
+    - **Visuals:** Minimum 1-2 diagrams per major topic
+    - **Comparisons:** Tables for easily confused concepts
+    """
 
     user_prompt = f"""
-**CONTEXT:**
-Subject: {subject or "General"}
-Unit: {unit_title}
-Syllabus Topics: 
-{unit_text}
+    # **CONTEXT:**
+    - **Subject:** {subject or "General"}
+    - **Unit:** {unit_title}
+    - **Syllabus Topics:** 
+    {unit_text}
 
-**RETRIEVED KNOWLEDGE BASE (Source Material):**
-{book_context}
+    ---
 
-{pyq_context}
+    # **RETRIEVED KNOWLEDGE BASE (Source Material):**
+    {book_context}
 
----
+    {pyq_context}
 
-**TASK:** Write comprehensive study notes for **{unit_title}**. 
+    ---
 
-**REQUIRED STRUCTURE (Follow this exactly):**
+    # **TASK:** 
+    Write **comprehensive study notes** for **{unit_title}**. 
 
-# {unit_title} - [Topic Name]
+    ---
 
-> **Unit Overview:** Write a 3-4 sentence summary of what this unit covers and why it matters in the real world.
+    # **REQUIRED STRUCTURE** (Follow this exactly):
 
----
+    ---
 
-## [Topic 1 Name]
+    # **{unit_title}** - [Topic Name]
 
-**1. Definition**
-[Provide a clear, formal definition in a blockquote]
+    > **Unit Overview:** Write a 3-4 sentence summary of what this unit covers and why it matters in the real world.
 
-**2. Conceptual Explanation**
-[2-3 paragraphs explaining the concept in depth. Explain "Why" we need it, not just "What" it is.]
+    ---
 
-**3. Key Characteristics/Features**
-[Bulleted list of properties]
+    ## **[Topic 1 Name]**
 
-**4. Process/Workflow (IF APPLICABLE)**
-[If this is a process/algorithm, describe steps AND provide a visual representation]
-*Example format:*
-[Step 1] --> [Step 2] --> [Decision] --> [Outcome]
+    ### **1. Definition**
+    > [Provide a clear, formal definition in a blockquote]
 
-**5. Real-World Case Study**
-[Create a specific scenario Example". detailed explanation of how the concept applies here.]
+    ### **2. Conceptual Explanation**
+    [2-3 paragraphs explaining the concept in depth. Explain **"Why"** we need it, not just **"What"** it is.]
 
-**6. Applications**
-[List of industries/areas where this is used]
+    ### **3. Key Characteristics/Features**
+    - **Feature 1:** [Description]
+    - **Feature 2:** [Description]
+    - **Feature 3:** [Description]
 
----
-*(Repeat the structure above for every major topic in the syllabus: {subtopic_list_str})*
----
+    ### **4. Process/Workflow** (IF APPLICABLE)
+    [If this is a process/algorithm, describe steps **AND** provide a visual representation]
 
-## Key Differences & Comparisons
-[Create 1 or 2 comparison tables for confusing topics in this unit, e.g., Linear vs Logistic, or Data Warehouse vs Database]
+    **Visual Representation:**
+    ```
+    [Step 1] → [Step 2] → [Decision] → [Outcome]
+    ```
 
-| Feature | Concept A | Concept B |
-| :--- | :--- | :--- |
-| ... | ... | ... |
+    **Step-by-Step Breakdown:**
+    1. **Step 1:** [Description]
+    2. **Step 2:** [Description]
+    3. **Step 3:** [Description]
 
----
+    ### **5. Real-World Case Study**
+    **Scenario:** [Create a specific scenario]
 
-## Chapter Summary & Revision
-* **Key Takeaway 1:** ...
-* **Key Takeaway 2:** ...
-* **Important Formulae:** [List any math equations used]
+    **Application:** [Provide detailed explanation of how the concept applies here]
 
-## Practice Questions (Based on Exam Patterns)
-1. [Conceptual Question]
-2. [Application Question]
-3. [Problem Solving/Scenario Question]
+    **Outcome:** [What problem does it solve?]
 
-"""
+    ### **6. Applications**
+    - **Industry 1:** [Specific use case]
+    - **Industry 2:** [Specific use case]
+    - **Industry 3:** [Specific use case]
+
+    ---
+    *(Repeat the structure above for every major topic in the syllabus: {subtopic_list_str})*
+
+    ---
+
+    ## **Key Differences & Comparisons**
+
+    [Create 1-2 comparison tables for confusing topics in this unit]
+
+    ### **Comparison: [Concept A] vs [Concept B]**
+
+    | **Feature** | **Concept A** | **Concept B** |
+    |:-----------|:-------------|:-------------|
+    | **Purpose** | ... | ... |
+    | **Use Case** | ... | ... |
+    | **Advantages** | ... | ... |
+    | **Disadvantages** | ... | ... |
+
+    ---
+
+    ## **Chapter Summary & Revision**
+
+    ### **Key Takeaways:**
+    - **Takeaway 1:** [Concise summary point]
+    - **Takeaway 2:** [Concise summary point]
+    - **Takeaway 3:** [Concise summary point]
+
+    ### **Important Formulae:**
+    - **Formula 1:** $[LaTeX equation]$ - [Brief explanation]
+    - **Formula 2:** $[LaTeX equation]$ - [Brief explanation]
+
+    ### **Must-Remember Points:**
+    - **Point 1**
+    - **Point 2**
+    - **Point 3**
+
+    ---
+
+    ## **Practice Questions** (Based on Exam Patterns)
+
+    ### **Conceptual Questions:**
+    1. [Question testing understanding of definitions and concepts]
+    2. [Question requiring explanation of relationships]
+
+    ### **Application Questions:**
+    3. [Scenario-based question requiring practical application]
+    4. [Problem requiring selection of appropriate approach]
+
+    ### **Problem-Solving Questions:**
+    5. [Numerical/algorithmic problem]
+    6. [Design/implementation scenario]
+
+    ---
+
+    **END OF NOTES**
+    """
 
     # 4. Call LLM
     try:
